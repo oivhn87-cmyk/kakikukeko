@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI画像・動画生成ツール</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #333;
+        }
+        /* タブのスタイル */
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            outline: none;
+            color: #666;
+            font-weight: bold;
+        }
+        .tab-btn.active {
+            color: #007bff;
+            border-bottom: 3px solid #007bff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button.action-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.action-btn:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        /* ダウンロードボタン用のスタイル */
+        .download-btn {
+            background-color: #28a745;
+            margin-top: 15px;
+            display: none;
+        }
+        .download-btn:hover {
+            background-color: #218838;
+        }
+        #result-container {
+            margin-top: 20px;
+            min-height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #eee;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-direction: column;
+            padding: 10px;
+        }
+        #result-image {
+            max-width: 100%;
+            height: auto;
+            display: none;
+        }
+        #loading {
+            display: none;
+            font-weight: bold;
+            color: #555;
+        }
+        /* 動画生成タブ用のスタイル */
+        .video-links {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .video-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: left;
+        }
+        .video-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .video-card p {
+            font-size: 13px;
+            color: #666;
+            margin: 0 0 10px 0;
+        }
+        .external-link-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .external-link-btn:hover {
+            background-color: #5a6268;
+        }
+        .hint-text {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AIクリエイティブツール</h1>
+
+    <!-- タブ切り替えボタン -->
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="switchTab('image')">AI画像生成</button>
+        <button class="tab-btn" onclick="switchTab('video')">AI動画生成</button>
+    </div>
+
+    <!-- 画像生成タブの中身 -->
+    <div id="image-tab" class="tab-content active">
+        <p>生成したい画像の説明（英語推奨）を入力してください[cite: 1]</p>
+        <div class="input-group">
+            <input type="text" id="prompt-image" placeholder="例: A cute cat in space, 8k" value="A futuristic city at sunset, highly detailed">
+            <button class="action-btn" id="generate-btn" onclick="generateImage()">生成</button>
+        </div>
+
+        <div id="result-container">
+            <div id="loading">画像を生成中...（数秒かかります）[cite: 1]</div>
+            <img id="result-image" alt="生成された画像" crossorigin="anonymous">
+        </div>
+
+        <!-- 画像ダウンロード用ボタン -->
+        <button id="download-btn" class="download-btn action-btn" onclick="downloadImage()">画像を保存する</button>
+    </div>
+
+    <!-- 動画生成タブの中身 -->
+    <div id="video-tab" class="tab-content">
+        <p>動画化したいプロンプトを入力し、外部の高性能AI動画ツールへコピー＆ジャンプできます</p>
+        <div class="input-group">
+            <input type="text" id="prompt-video" placeholder="例: Cinematic drone shot of a flying car" value="Cinematic drone shot of a flying car over neon city">
+            <button class="action-btn" onclick="copyPrompt()">プロンプトをコピー</button>
+        </div>
+        <p class="hint-text" id="copy-status" style="color: #28a745; display: none; margin-top: -10px;">プロンプトをコピーしました！</p>
+
+        <div class="video-links">
+            <div class="video-card">
+                <h3>Luma Dream Machine</h3>
+                <p>高品質な実写・アニメ調の動画を生成できます。</p>
+                <a href="https://lumalabs.ai/dream-machine" target="_blank" class="external-link-btn">サイトを開く</a>
+            </div>
+            <div class="video-card">
+                <h3>Kling AI</h3>
+                <p>ダイナミックでリアルな動きの動画生成に強いです。</p>
+                <a href="https://klingai.com" target="_blank" class="external-link-btn">サイトを開く</a>
+            </div>
+            <div class="video-card">
+                <h3>Runway (Gen-2 / Gen-3)</h3>
+                <p>映画のようなクリエイティブな動画制作の定番。</p>
+                <a href="https://runwayml.com" target="_blank" class="external-link-btn">サイトを開く</a>
+            </div>
+            <div class="video-card">
+                <h3>Pika</h3>
+                <p>アイデアを素早くショート動画に変換できます。</p>
+                <a href="https://pika.art" target="_blank" class="external-link-btn">サイトを開く</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // タブ切り替え機能
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            const buttons = document.querySelectorAll('.tab-btn');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            if (tabName === 'image') {
+                document.getElementById('image-tab').classList.add('active');
+                buttons[0].classList.add('active');
+            } else if (tabName === 'video') {
+                document.getElementById('video-tab').classList.add('active');
+                buttons[1].classList.add('active');
+            }
+        }
+
+        // 画像生成機能（既存コードベース）[cite: 1]
+        function generateImage() {
+            const promptInput = document.getElementById('prompt-image');
+            const promptText = promptInput.value.trim();
+            const generateBtn = document.getElementById('generate-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const loadingText = document.getElementById('loading');
+            const resultImg = document.getElementById('result-image');
+
+            if (!promptText) {
+                alert('プロンプトを入力してください。');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            resultImg.style.display = 'none';
+            downloadBtn.style.display = 'none';
+            loadingText.style.display = 'block';
+
+            const encodedPrompt = encodeURIComponent(promptText);
+            const randomSeed = Math.floor(Math.random() * 1000000);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${randomSeed}`;
+
+            resultImg.onload = function() {
+                loadingText.style.display = 'none';
+                resultImg.style.display = 'block';
+                downloadBtn.style.display = 'inline-block';
+                generateBtn.disabled = false;
+            };
+
+            resultImg.onerror = function() {
+                loadingText.style.display = 'none';
+                alert('画像の生成に失敗しました。もう一度お試しください。');
+                generateBtn.disabled = false;
+            };
+
+            resultImg.src = imageUrl;
+        }
+
+        async function downloadImage() {
+            const resultImg = document.getElementById('result-image');
+            const downloadBtn = document.getElementById('download-btn');
+            
+            if (!resultImg.src) return;
+
+            try {
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = 'ダウンロード中...';
+
+                const response = await fetch(resultImg.src);
+                const blob = await response.blob();
+
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = `ai-image-${Date.now()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                
+                document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+            } catch (error) {
+                alert('画像のダウンロードに失敗しました。');
+                console.error(error);
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = '画像を保存する';
+            }
+        }
+
+        // 動画用プロンプトコピー機能
+        function copyPrompt() {
+            const promptInput = document.getElementById('prompt-video');
+            const statusText = document.getElementById('copy-status');
+            
+            navigator.clipboard.writeText(promptInput.value).then(() => {
+                statusText.style.display = 'block';
+                setTimeout(() => {
+                    statusText.style.display = 'none';
+                }, 2500);
+            }).catch(err => {
+                alert('コピーに失敗しました');
+            });
+        }
+    </script>
+
+</body>
+</html>
